@@ -8,6 +8,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
+    },
+    "./layers": {
+      "types": "./dist/layers/index.d.ts",
+      "default": "./dist/layers/index.js"
     }
   },
   "files": [
@@ -15,8 +19,13 @@
     "README.md"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.json && cp tsconfig.default.json dist/",
-    "prepare": "npm run build"
+    "build": "tsc -p tsconfig.json && tsc-alias -p tsconfig.json && cp tsconfig.default.json dist/",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "prepare": "npm run build",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "engines": {
     "node": ">=22"
@@ -33,6 +42,8 @@
   "devDependencies": {
     "@types/node": "^22.19.1",
     "eslint": "^10.6.0",
+    "prettier": "^3.6.2",
+    "tsc-alias": "^1.8.16",
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.62.0"
   }
