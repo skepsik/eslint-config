@@ -1,16 +1,16 @@
 # @skepsik/eslint-config
 
-Shared ESLint flat config for TypeScript projects.
+Общая flat-конфигурация ESLint для TypeScript-проектов.
 
-## Install
+## Установка
 
-Peer dependencies (install in the consumer project):
+peerDependencies (ставятся в проекте-потребителе):
 
 ```bash
 npm i -D eslint typescript-eslint @skepsik/eslint-config
 ```
 
-Bundled with the package (`dependencies`, no need to install separately):
+Входит в пакет (`dependencies`, отдельно ставить не нужно):
 
 - `@eslint/js`
 - `eslint-config-prettier`
@@ -18,9 +18,9 @@ Bundled with the package (`dependencies`, no need to install separately):
 
 Node.js ≥ 22.
 
-## Usage
+## Использование
 
-### Single config (typical project)
+### `createConfig` (типичный случай)
 
 ```ts
 // eslint.config.ts
@@ -29,18 +29,20 @@ import { createConfig } from '@skepsik/eslint-config';
 export default createConfig();
 ```
 
-Syntax-only with optional project service (better parser/type info, no type-checked rules):
+Только синтаксис, с `projectService`: парсер знает типы, но без type-checked правил:
 
 ```ts
 export default createConfig({
+  rootDir: import.meta.dirname,
   typescript: true,
 });
 ```
 
-Type-checked rules + project service:
+Type-checked правила и `projectService`:
 
 ```ts
 export default createConfig({
+  rootDir: import.meta.dirname,
   typescript: {
     projectService: {
       typeChecked: true,
@@ -50,24 +52,47 @@ export default createConfig({
 });
 ```
 
-Strict syntax preset without project service:
+Строгий синтаксический пресет:
 
 ```ts
 export default createConfig({
-  typescript: { level: 'strict' },
+  typescript: { preset: 'strict' },
 });
 ```
 
-### Monorepo with nested `eslint.config.ts`
-
-When several config files are linted in one run (`eslint .`), pass **`rootDir`** in **each** config:
+### Сборка из слоёв
 
 ```ts
-// eslint.config.ts (repo root)
-import { createConfig } from '@skepsik/eslint-config';
+import { defineConfig } from 'eslint/config';
+import {
+  base,
+  createTypeScriptContext,
+  prettier,
+  stylistic,
+} from '@skepsik/eslint-config';
 
+const ts = createTypeScriptContext({ rootDir: import.meta.dirname });
+
+export default defineConfig([
+  ...base({ ignores: ['drizzle/**'] }),
+  ...ts.recommended({
+    files: ['apps/runtime/src/**', 'packages/core/src/**'],
+    projectService: true,
+  }),
+  ...stylistic(),
+  ...prettier(),
+]);
+```
+
+Слои также доступны из `@skepsik/eslint-config/layers`.
+
+### Monorepo с вложенными `eslint.config.ts`
+
+Передавай **`rootDir`** в **каждом** конфиге:
+
+```ts
+// eslint.config.ts (корень репо)
 export default createConfig({
-  ignores: ['apps/*/dist/**'],
   rootDir: import.meta.dirname,
   typescript: {
     projectService: {
@@ -80,25 +105,20 @@ export default createConfig({
 
 ```ts
 // apps/web/eslint.config.ts
-import { createConfig } from '@skepsik/eslint-config';
-
 export default createConfig({
-  ignores: ['dist/**'],
   rootDir: import.meta.dirname,
 });
 ```
 
-Without `rootDir` in nested configs, ESLint may fail with:
+Без `rootDir` во вложенных конфигах ESLint может упасть с:
 
 ```text
 No tsconfigRootDir was set, and multiple candidate TSConfigRootDirs are present
 ```
 
-See [Why `rootDir`](#why-rootdir) below.
+Подробнее — [Зачем `rootDir`](#зачем-rootdir).
 
-### Overrides
-
-Extra flat config blocks are appended before `eslint-config-prettier`:
+### Переопределения
 
 ```ts
 export default createConfig(
@@ -118,91 +138,116 @@ export default createConfig(
 
 ### `createConfig(options?, ...overrides)`
 
-Returns a flat config array (via ESLint `defineConfig`).
+Возвращает массив flat-конфигурации (через ESLint `defineConfig`).
 
 #### `options`
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `rootDir` | `string?` | Directory of this `eslint.config.ts` — usually `import.meta.dirname`. **Required in monorepos with nested configs.** Optional for a single root config. |
-| `ignores` | `string[]?` | Additional ignore globs (always includes `**/dist/**`). |
-| `typescript` | `boolean \| TypeScriptOptions?` | TypeScript preset and parser options. See below. |
-| `vue` | `boolean \| VueOptions?` | Not implemented yet. |
-| `react` | `boolean \| ReactOptions?` | Not implemented yet. |
+| Поле         | Тип                             | Описание                                                                                                              |
+| ------------ | ------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `rootDir`    | `string?`                       | Директория этого `eslint.config.ts` — обычно `import.meta.dirname`. **Обязателен в monorepo с вложенными конфигами.** |
+| `ignores`    | `string[]?`                     | Дополнительные маски игнора (всегда включает `**/dist/**`). `node_modules` ESLint игнорирует сам.                     |
+| `typescript` | `boolean \| TypeScriptOptions?` | См. ниже.                                                                                                             |
+| `vue`        | `boolean \| VueOptions?`        | Пока не реализовано.                                                                                                  |
+| `react`      | `boolean \| ReactOptions?`      | Пока не реализовано.                                                                                                  |
 
 #### `TypeScriptOptions`
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `level` | `'recommended' \| 'strict'?` | tseslint preset strictness. Default: `recommended`. |
-| `projectService` | `ProjectServiceOptions?` | Parser project service. Only under `typescript` — it is a `@typescript-eslint/parser` option. |
+| Поле             | Тип                          | Описание                                             |
+| ---------------- | ---------------------------- | ---------------------------------------------------- |
+| `preset`         | `'recommended' \| 'strict'?` | Пресет tseslint. По умолчанию: `recommended`.        |
+| `projectService` | `ProjectServiceOptions?`     | `projectService` парсера TypeScript.                 |
+| `files`          | `string[]?`                  | Ограничить пресет и настройки парсера этими масками. |
 
-`typescript: true` is shorthand for `{ level: 'recommended', projectService: true }`.
-
-`typescript: {}` throws — omit the field or pass `level` / `projectService`.
+`typescript: true` ≡ `{ preset: 'recommended', projectService: true }`.
 
 #### `ProjectServiceOptions`
 
-| Form | Preset | Project service |
-|------|--------|-----------------|
-| *(omit `typescript`)* | `recommended` | off |
-| `true` (on `typescript`) | `recommended` | on, syntax-only |
-| `{ level: 'strict' }` | `strict` | off |
-| `{ projectService: true }` | `recommended` | on, syntax-only |
-| `{ projectService: { typeChecked: true } }` | `recommendedTypeChecked` | on (required) |
-| `{ level: 'strict', projectService: { typeChecked: true } }` | `strictTypeChecked` | on (required) |
+| Форма                                                         | Пресет                   | `projectService`      |
+| ------------------------------------------------------------- | ------------------------ | --------------------- |
+| _(нет `typescript`)_                                          | `recommended`            | выкл                  |
+| `true` (краткая запись на `typescript`)                       | `recommended`            | вкл, только синтаксис |
+| `{ preset: 'strict' }`                                        | `strict`                 | выкл                  |
+| `{ projectService: true }`                                    | `recommended`            | вкл                   |
+| `{ projectService: { typeChecked: true } }`                   | `recommendedTypeChecked` | вкл                   |
+| `{ preset: 'strict', projectService: { typeChecked: true } }` | `strictTypeChecked`      | вкл                   |
 
-Object form:
+Объектная форма:
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `typeChecked` | `boolean?` | Use `*TypeChecked` preset. Requires project service. Default: `false`. |
-| `allowDefaultProject` | `string[]?` | Globs for TS files **not** in any tsconfig that should use the package default project. Do not match files already covered by tsconfig (e.g. `vite.config.ts`). |
+| Поле                  | Тип         | Описание                                                             |
+| --------------------- | ----------- | -------------------------------------------------------------------- |
+| `typeChecked`         | `boolean?`  | Пресет `*TypeChecked`. Требует `projectService`.                     |
+| `allowDefaultProject` | `string[]?` | Маски TS-файлов вне tsconfig (используется дефолтный проект пакета). |
 
-#### `VueOptions` / `ReactOptions`
+### Слои
 
-Reserved for future integration. Each domain has its own `level` enum (`essential` / `recommended` for Vue, `recommended` / `jsx-runtime` for React). Project service stays under `typescript` only.
+| Функция                                | Возвращает | Роль                                                   |
+| -------------------------------------- | ---------- | ------------------------------------------------------ |
+| `base({ ignores? })`                   | `Config[]` | игноры, `@eslint/js`, perfectionist                    |
+| `createTypeScriptContext({ rootDir })` | контекст   | привязывает `rootDir` для `recommended()` / `strict()` |
+| `ts.recommended(scope?)`               | `Config[]` | пресет tseslint + опциональные настройки парсера       |
+| `ts.strict(scope?)`                    | `Config[]` | то же с пресетом `strict`                              |
+| `stylistic({ files? })`                | `Config[]` | `consistent-type-imports`, `no-unused-vars`            |
+| `prettier()`                           | `Config[]` | `eslint-config-prettier` (ставить последним)           |
 
-#### `...overrides`
+`TypeScriptScopeOptions`: `{ files?, projectService? }`.
 
-Additional ESLint flat config objects merged after the base stack.
+## Что входит в конфиг
 
-## What the config includes
-
-1. `**/dist/**` ignores (+ custom `ignores`)
+1. игнор `**/dist/**` (+ кастомные `ignores`)
 2. `@eslint/js` recommended
-3. `typescript-eslint` — preset from `typescript.level` and `typescript.projectService.typeChecked`
+3. пресет `typescript-eslint` из `typescript.preset` и `typescript.projectService`
 4. `eslint-plugin-perfectionist` — `recommended-natural`
-5. Stylistic TypeScript rules (`consistent-type-imports`, `no-unused-vars` with `_` prefix)
-6. `eslint-config-prettier` (last)
-7. Your `overrides`
+5. стилистические правила TypeScript (`consistent-type-imports`, `consistent-type-exports`, `no-unused-vars`)
+6. `eslint-config-prettier` (последним)
+7. твои переопределения
 
-## Why `rootDir`
+## Зачем `rootDir`
 
-In the public API the option is **`rootDir`**. Internally it is passed to the parser as `parserOptions.tsconfigRootDir` — that is the name `@typescript-eslint/parser` expects.
+В публичном API опция называется **`rootDir`**. Внутри передаётся в парсер как `parserOptions.tsconfigRootDir`.
 
-We set it explicitly on purpose:
+Пресеты вроде `tseslint.configs.recommended` — **геттеры с побочным эффектом**: при чтении регистрируют кандидатов для автоопределения `tsconfigRootDir`. Если в одном запуске ESLint несколько вложенных конфигов, явный `rootDir` обходит это автоопределение.
 
-- Presets like `tseslint.configs.recommended` are **getters with a side effect**: on read they walk the call stack, find `eslint.config.*`, and register that directory in a **global Set of candidates** for `tsconfigRootDir` inference.
-- With **one** config file this usually works (one candidate or `process.cwd()`).
-- With **several** nested configs in one ESLint run, each preset read adds another candidate. When the parser later resolves paths without an explicit `tsconfigRootDir`, it sees multiple candidates and throws.
+`rootDir` обязателен во вложенных monorepo-конфигах; для одного корневого конфига — опционален.
 
-Explicit `rootDir` bypasses that inference — the parser never reads the global Set.
+## TypeScript: `verbatimModuleSyntax`
 
-Other shared presets (`eslint.configs.recommended`, perfectionist, prettier) are plain objects; they do not have this behaviour.
+В этом репозитории включён в `tsconfig.json`; для потребителей — **рекомендуется** в `compilerOptions`:
 
-Runtime detection of “is this a monorepo?” is unreliable, so `rootDir` stays optional in the API and **documented as required for nested configs**.
+```json
+{
+  "compilerOptions": {
+    "verbatimModuleSyntax": true
+  }
+}
+```
 
-## Dependencies vs peers
+Проверка: `npm run typecheck` (`tsc --noEmit`).
 
-| Package | Role |
-|---------|------|
-| `eslint`, `typescript-eslint` | **Peers** — consumer installs; one shared instance (especially important for `typescript-eslint`, see above). |
-| `@eslint/js`, `eslint-config-prettier`, `eslint-plugin-perfectionist` | **Dependencies** — pulled in with `@skepsik/eslint-config`. |
+**Что ловит `tsc` (TS1484):** type-only import без пометки:
 
-App-specific ESLint plugins (e.g. `eslint-config-vuetify` for Vue) stay in the workspace that needs them, not in this package.
+```ts
+import { Config, defineConfig } from 'eslint/config'; // Config только как тип → error
+```
 
-## Not implemented
+**Что нужно:**
 
-- `vue` — Vue / `eslint-plugin-vue` integration (planned).
-- `react` — React / `eslint-plugin-react` integration (planned).
+```ts
+import type { Config } from 'eslint/config';
+import { defineConfig } from 'eslint/config';
+```
+
+**Что не ловит:** inline `{ type Config }` и смешанный `import { type Config, defineConfig }` — для TypeScript это валидная type-only форма. ESLint `consistent-type-imports` тоже не требует разносить такие импорты.
+
+Итого: `verbatimModuleSyntax` + `consistent-type-imports` дополняют друг друга на «забыли `type`», но **не заменяют** стиль «всегда `import type` отдельной строкой».
+
+## dependencies и peerDependencies
+
+| Пакет                                                                 | Роль                                                   |
+| --------------------------------------------------------------------- | ------------------------------------------------------ |
+| `eslint`, `typescript-eslint`                                         | **peerDependencies** — одна общая копия в потребителе. |
+| `@eslint/js`, `eslint-config-prettier`, `eslint-plugin-perfectionist` | **dependencies** — идут с пакетом.                     |
+
+## Не реализовано
+
+- `vue` — Vue / `eslint-plugin-vue`
+- `react` — React / `eslint-plugin-react`
