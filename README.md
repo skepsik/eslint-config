@@ -26,24 +26,35 @@ Node.js ≥ 22.
 // eslint.config.ts
 import { createConfig } from '@skepsik/eslint-config';
 
-export default createConfig({
-  typed: true,
-});
-```
-
-Syntax-only (no type-aware rules):
-
-```ts
 export default createConfig();
 ```
 
-Type-aware with extra files outside tsconfig (e.g. root config files):
+Syntax-only with optional project service (better parser/type info, no type-checked rules):
 
 ```ts
 export default createConfig({
-  typed: {
-    allowDefaultProject: ['eslint.config.ts', 'prettier.config.ts'],
+  typescript: true,
+});
+```
+
+Type-checked rules + project service:
+
+```ts
+export default createConfig({
+  typescript: {
+    projectService: {
+      typeChecked: true,
+      allowDefaultProject: ['eslint.config.ts', 'prettier.config.ts'],
+    },
   },
+});
+```
+
+Strict syntax preset without project service:
+
+```ts
+export default createConfig({
+  typescript: { level: 'strict' },
 });
 ```
 
@@ -58,8 +69,11 @@ import { createConfig } from '@skepsik/eslint-config';
 export default createConfig({
   ignores: ['apps/*/dist/**'],
   rootDir: import.meta.dirname,
-  typed: {
-    allowDefaultProject: ['eslint.config.ts'],
+  typescript: {
+    projectService: {
+      typeChecked: true,
+      allowDefaultProject: ['eslint.config.ts'],
+    },
   },
 });
 ```
@@ -88,7 +102,11 @@ Extra flat config blocks are appended before `eslint-config-prettier`:
 
 ```ts
 export default createConfig(
-  { typed: true },
+  {
+    typescript: {
+      projectService: { typeChecked: true },
+    },
+  },
   {
     files: ['**/*.test.ts'],
     rules: { '@typescript-eslint/no-explicit-any': 'off' },
@@ -107,15 +125,43 @@ Returns a flat config array (via ESLint `defineConfig`).
 | Field | Type | Description |
 |-------|------|-------------|
 | `rootDir` | `string?` | Directory of this `eslint.config.ts` — usually `import.meta.dirname`. **Required in monorepos with nested configs.** Optional for a single root config. |
-| `typed` | `boolean \| TypedOptions?` | Type-aware linting. `true` or `{}` enables `recommendedTypeChecked` + `projectService`. |
 | `ignores` | `string[]?` | Additional ignore globs (always includes `**/dist/**`). |
-| `vue` | `boolean?` | Not implemented yet. |
+| `typescript` | `boolean \| TypeScriptOptions?` | TypeScript preset and parser options. See below. |
+| `vue` | `boolean \| VueOptions?` | Not implemented yet. |
+| `react` | `boolean \| ReactOptions?` | Not implemented yet. |
 
-#### `TypedOptions`
+#### `TypeScriptOptions`
 
 | Field | Type | Description |
 |-------|------|-------------|
+| `level` | `'recommended' \| 'strict'?` | tseslint preset strictness. Default: `recommended`. |
+| `projectService` | `ProjectServiceOptions?` | Parser project service. Only under `typescript` — it is a `@typescript-eslint/parser` option. |
+
+`typescript: true` is shorthand for `{ level: 'recommended', projectService: true }`.
+
+`typescript: {}` throws — omit the field or pass `level` / `projectService`.
+
+#### `ProjectServiceOptions`
+
+| Form | Preset | Project service |
+|------|--------|-----------------|
+| *(omit `typescript`)* | `recommended` | off |
+| `true` (on `typescript`) | `recommended` | on, syntax-only |
+| `{ level: 'strict' }` | `strict` | off |
+| `{ projectService: true }` | `recommended` | on, syntax-only |
+| `{ projectService: { typeChecked: true } }` | `recommendedTypeChecked` | on (required) |
+| `{ level: 'strict', projectService: { typeChecked: true } }` | `strictTypeChecked` | on (required) |
+
+Object form:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `typeChecked` | `boolean?` | Use `*TypeChecked` preset. Requires project service. Default: `false`. |
 | `allowDefaultProject` | `string[]?` | Globs for TS files **not** in any tsconfig that should use the package default project. Do not match files already covered by tsconfig (e.g. `vite.config.ts`). |
+
+#### `VueOptions` / `ReactOptions`
+
+Reserved for future integration. Each domain has its own `level` enum (`essential` / `recommended` for Vue, `recommended` / `jsx-runtime` for React). Project service stays under `typescript` only.
 
 #### `...overrides`
 
@@ -125,7 +171,7 @@ Additional ESLint flat config objects merged after the base stack.
 
 1. `**/dist/**` ignores (+ custom `ignores`)
 2. `@eslint/js` recommended
-3. `typescript-eslint` — `recommended` or `recommendedTypeChecked` (if `typed`)
+3. `typescript-eslint` — preset from `typescript.level` and `typescript.projectService.typeChecked`
 4. `eslint-plugin-perfectionist` — `recommended-natural`
 5. Stylistic TypeScript rules (`consistent-type-imports`, `no-unused-vars` with `_` prefix)
 6. `eslint-config-prettier` (last)
@@ -158,4 +204,5 @@ App-specific ESLint plugins (e.g. `eslint-config-vuetify` for Vue) stay in the w
 
 ## Not implemented
 
-- `vue: true` — Vue / `eslint-plugin-vue` integration (planned).
+- `vue` — Vue / `eslint-plugin-vue` integration (planned).
+- `react` — React / `eslint-plugin-react` integration (planned).

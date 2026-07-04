@@ -33,8 +33,30 @@ const stylisticRules: Config = {
   },
 };
 
-export type TypedOptions = {
-  allowDefaultProject?: string[];
+export type ProjectServiceOptions =
+  | true
+  | {
+      typeChecked?: boolean;
+      allowDefaultProject?: string[];
+    };
+
+export type TypeScriptLevel = 'recommended' | 'strict';
+
+export type TypeScriptOptions = {
+  level?: TypeScriptLevel;
+  projectService?: ProjectServiceOptions;
+};
+
+export type VueLevel = 'essential' | 'strongly-recommended' | 'recommended';
+
+export type VueOptions = {
+  level?: VueLevel;
+};
+
+export type ReactLevel = 'recommended' | 'jsx-runtime';
+
+export type ReactOptions = {
+  level?: ReactLevel;
 };
 
 export type CreateConfigOptions = {
@@ -43,10 +65,13 @@ export type CreateConfigOptions = {
    * Required in monorepos with nested eslint.config.* files.
    */
   rootDir?: string;
-  typed?: boolean | TypedOptions;
-  /** eslint-plugin-vue — not implemented yet */
-  vue?: boolean;
   ignores?: string[];
+  /** `true` ≡ `{ level: 'recommended', projectService: true }` */
+  typescript?: boolean | TypeScriptOptions;
+  /** eslint-plugin-vue — not implemented yet */
+  vue?: boolean | VueOptions;
+  /** eslint-plugin-react — not implemented yet */
+  react?: boolean | ReactOptions;
 };
 
 type ParserOptions = {
@@ -57,35 +82,83 @@ type ParserOptions = {
   tsconfigRootDir?: string;
 };
 
-function normalizeTypedOptions(
-  typed: CreateConfigOptions['typed'],
-): TypedOptions | undefined {
-  if (!typed) {
+type NormalizedProjectService = {
+  typeChecked: boolean;
+  allowDefaultProject?: string[];
+};
+
+type NormalizedTypeScriptOptions = {
+  level: TypeScriptLevel;
+  projectService?: NormalizedProjectService;
+};
+
+function normalizeProjectService(
+  projectService: ProjectServiceOptions,
+): NormalizedProjectService {
+  if (projectService === true) {
+    return { typeChecked: false };
+  }
+
+  return {
+    typeChecked: projectService.typeChecked ?? false,
+    ...(projectService.allowDefaultProject !== undefined && {
+      allowDefaultProject: projectService.allowDefaultProject,
+    }),
+  };
+}
+
+function normalizeTypeScriptOptions(
+  typescript: CreateConfigOptions['typescript'],
+): NormalizedTypeScriptOptions | undefined {
+  if (typescript === undefined) {
     return undefined;
   }
 
-  if (typed === true) {
-    return {};
+  if (typescript === true) {
+    return {
+      level: 'recommended',
+      projectService: { typeChecked: false },
+    };
   }
 
-  return typed;
+  if (typeof typescript !== 'object') {
+    throw new Error(
+      'createConfig({ typescript: false }) is invalid — omit typescript instead',
+    );
+  }
+
+  if (Object.keys(typescript).length === 0) {
+    throw new Error(
+      'createConfig({ typescript: {} }) is invalid — omit typescript or pass level/projectService',
+    );
+  }
+
+  const projectService =
+    typescript.projectService !== undefined
+      ? normalizeProjectService(typescript.projectService)
+      : undefined;
+
+  return {
+    level: typescript.level ?? 'recommended',
+    ...(projectService !== undefined && { projectService }),
+  };
 }
 
-function buildProjectService(typed: TypedOptions) {
-  const projectService: NonNullable<ParserOptions['projectService']> = {
+function buildProjectService(projectService: NormalizedProjectService) {
+  const service: NonNullable<ParserOptions['projectService']> = {
     defaultProject,
   };
 
-  if (typed.allowDefaultProject !== undefined) {
-    projectService.allowDefaultProject = typed.allowDefaultProject;
+  if (projectService.allowDefaultProject !== undefined) {
+    service.allowDefaultProject = projectService.allowDefaultProject;
   }
 
-  return projectService;
+  return service;
 }
 
 function buildParserLanguageOptions(
   rootDir?: string,
-  typed?: TypedOptions,
+  projectService?: NormalizedProjectService,
 ): NonNullable<Config['languageOptions']> {
   const parserOptions: ParserOptions = {};
 
@@ -93,62 +166,98 @@ function buildParserLanguageOptions(
     parserOptions.tsconfigRootDir = rootDir;
   }
 
-  if (typed !== undefined) {
-    parserOptions.projectService = buildProjectService(typed);
+  if (projectService !== undefined) {
+    parserOptions.projectService = buildProjectService(projectService);
   }
 
   return { parserOptions };
 }
 
-function buildTypedTypeScriptConfigs(
+function getTypeScriptPreset(
+  level: TypeScriptLevel,
+  typeChecked: boolean,
+): Config[] {
+  if (typeChecked) {
+    return level === 'strict'
+      ? [...tseslint.configs.strictTypeChecked]
+      : [...tseslint.configs.recommendedTypeChecked];
+  }
+
+  return level === 'strict'
+    ? [...tseslint.configs.strict]
+    : [...tseslint.configs.recommended];
+}
+
+function buildTypeCheckedTypeScriptConfigs(
   rootDir: string | undefined,
-  typed: TypedOptions,
+  level: TypeScriptLevel,
+  projectService: NormalizedProjectService,
 ) {
+  const preset =
+    level === 'strict'
+      ? tseslint.configs.strictTypeChecked
+      : tseslint.configs.recommendedTypeChecked;
+
   return [
     {
-      extends: tseslint.configs.recommendedTypeChecked,
+      extends: preset,
       files: tsFiles,
-      languageOptions: buildParserLanguageOptions(rootDir, typed),
+      languageOptions: buildParserLanguageOptions(rootDir, projectService),
     },
   ];
 }
 
-function buildSyntaxTypeScriptConfigs(rootDir: string | undefined) {
-  if (rootDir === undefined) {
-    return [...tseslint.configs.recommended];
+function buildSyntaxTypeScriptConfigs(
+  rootDir: string | undefined,
+  level: TypeScriptLevel,
+  projectService?: NormalizedProjectService,
+) {
+  const preset = getTypeScriptPreset(level, false);
+
+  if (rootDir === undefined && projectService === undefined) {
+    return preset;
   }
 
   return [
-    ...tseslint.configs.recommended,
+    ...preset,
     {
       files: tsFiles,
-      languageOptions: buildParserLanguageOptions(rootDir),
+      languageOptions: buildParserLanguageOptions(rootDir, projectService),
     },
   ];
 }
 
 function buildTypeScriptConfigs(
   rootDir: string | undefined,
-  typed: TypedOptions | undefined,
+  typescript: NormalizedTypeScriptOptions | undefined,
 ) {
-  if (typed !== undefined) {
-    return buildTypedTypeScriptConfigs(rootDir, typed);
+  const level = typescript?.level ?? 'recommended';
+  const projectService = typescript?.projectService;
+
+  if (projectService?.typeChecked) {
+    return buildTypeCheckedTypeScriptConfigs(rootDir, level, projectService);
   }
 
-  return buildSyntaxTypeScriptConfigs(rootDir);
+  return buildSyntaxTypeScriptConfigs(rootDir, level, projectService);
+}
+
+function assertNotImplemented(options: CreateConfigOptions) {
+  if (options.vue) {
+    throw new Error('createConfig({ vue }) is not implemented yet');
+  }
+
+  if (options.react) {
+    throw new Error('createConfig({ react }) is not implemented yet');
+  }
 }
 
 export function createConfig(
   options: CreateConfigOptions = {},
   ...overrides: Config[]
 ): Config[] {
-  if (options.vue) {
-    throw new Error(
-      'createConfig({ vue: true }) is not implemented yet',
-    );
-  }
+  assertNotImplemented(options);
 
-  const typedOptions = normalizeTypedOptions(options.typed);
+  const typescriptOptions = normalizeTypeScriptOptions(options.typescript);
   const ignores = options.ignores ?? [];
 
   return defineConfig([
@@ -156,7 +265,7 @@ export function createConfig(
       ignores: ['**/dist/**', ...ignores],
     },
     eslint.configs.recommended,
-    ...buildTypeScriptConfigs(options.rootDir, typedOptions),
+    ...buildTypeScriptConfigs(options.rootDir, typescriptOptions),
     perfectionist.configs['recommended-natural'],
     stylisticRules,
     ...overrides,
