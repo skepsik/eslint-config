@@ -69,20 +69,24 @@ import {
   createTypeScriptContext,
   prettier,
   stylistic,
+  stylisticTypeAware,
 } from '@skepsik/eslint-config';
 
 const ts = createTypeScriptContext({ rootDir: import.meta.dirname });
 
 export default defineConfig([
   ...base({ ignores: ['drizzle/**'] }),
+  ...ts.recommended({ rules: stylistic() }),
   ...ts.recommended({
     files: ['apps/runtime/src/**', 'packages/core/src/**'],
     projectService: true,
+    rules: stylisticTypeAware(),
   }),
-  ...stylistic(),
   ...prettier(),
 ]);
 ```
+
+`stylistic()` / `stylisticTypeAware()` возвращают **`RulesConfig`** — встраивай в `{ rules: … }` или в `ts.recommended({ rules })`. Type-aware rules — только в block с `projectService` / `typeChecked`.
 
 Слои также доступны из `@skepsik/eslint-config/layers`.
 
@@ -158,8 +162,11 @@ export default createConfig(
 | `projectService` | `ProjectServiceOptions?`     | `projectService` парсера TypeScript.                 |
 | `files`          | `string[]?`                  | Ограничить scope этими масками.                      |
 | `ignores`        | `string[]?`                  | Исключения **внутри scope** — см. [Игноры](#игноры). |
+| `rules`          | `RulesConfig?`               | Merge в scoped typescript-блок.                      |
 
 `typescript: true` ≡ `{ preset: 'recommended', projectService: true }`.
+
+`createConfig` собирается через `ts.recommended()` / `ts.strict()`: в scope всегда `stylistic()`, при `projectService` — ещё и `stylisticTypeAware()`.
 
 #### `ProjectServiceOptions`
 
@@ -179,27 +186,37 @@ export default createConfig(
 | `typeChecked`         | `boolean?`  | Пресет `*TypeChecked`. Требует `projectService`.                     |
 | `allowDefaultProject` | `string[]?` | Маски TS-файлов вне tsconfig (используется дефолтный проект пакета). |
 
-### Слои
+### Слои и rules kits
 
-| Функция                                | Возвращает | Роль                                                   |
-| -------------------------------------- | ---------- | ------------------------------------------------------ |
-| `base({ ignores? })`                   | `Config[]` | игноры, `@eslint/js`, perfectionist                    |
-| `createTypeScriptContext({ rootDir })` | контекст   | привязывает `rootDir` для `recommended()` / `strict()` |
-| `ts.recommended(scope?)`               | `Config[]` | пресет tseslint + опциональные настройки парсера       |
-| `ts.strict(scope?)`                    | `Config[]` | то же с пресетом `strict`                              |
-| `stylistic({ files? })`                | `Config[]` | `consistent-type-imports`, `consistent-type-exports`, `no-unused-vars` |
-| `prettier()`                           | `Config[]` | `eslint-config-prettier` (ставить последним)           |
+| Функция                                | Возвращает    | Роль                                           |
+| -------------------------------------- | ------------- | ---------------------------------------------- |
+| `base({ ignores? })`                   | `Config[]`    | игноры, `@eslint/js`, perfectionist            |
+| `createTypeScriptContext({ rootDir })` | контекст      | `rootDir` для `recommended()` / `strict()`     |
+| `ts.recommended(scope?)`               | `Config[]`    | preset tseslint + parser scope + merge `rules` |
+| `ts.strict(scope?)`                    | `Config[]`    | то же с пресетом `strict`                      |
+| `stylistic()`                          | `RulesConfig` | `consistent-type-imports`, `no-unused-vars`    |
+| `stylisticTypeAware()`                 | `RulesConfig` | `consistent-type-exports` (нужен type info)    |
+| `prettier()`                           | `Config[]`    | `eslint-config-prettier` (ставить последним)   |
 
-`TypeScriptScopeOptions`: `{ files?, ignores?, projectService? }`.
+`TypeScriptScopeOptions`: `{ files?, ignores?, projectService?, rules? }`.
+
+### Stylistic rules
+
+| Kit                    | Правила                 | Type info | Куда класть                                                             |
+| ---------------------- | ----------------------- | --------- | ----------------------------------------------------------------------- |
+| `stylistic()`          | imports, no-unused-vars | нет       | `ts.recommended({ rules: stylistic() })`                                |
+| `stylisticTypeAware()` | consistent-type-exports | **да**    | `ts.recommended({ projectService, rules })` — preset spread даёт plugin |
+
+Composable — руками, тем же `ts.recommended({ rules })`. `createConfig` — тот же путь, stylistic-киты подмешиваются в scope автоматически.
 
 ## Игноры
 
 Два уровня:
 
-| Уровень | Где | Назначение |
-| ------- | --- | ---------- |
-| **глобальный** | `base({ ignores })`, `createConfig({ ignores })` | не линтить каталоги целиком (`drizzle/**`, `**/generated/**`) |
-| **scope** | `ts.recommended({ ignores })`, `typescript: { ignores }` | точечно вырезать файлы **из этого typescript-блока** |
+| Уровень        | Где                                                      | Назначение                                                    |
+| -------------- | -------------------------------------------------------- | ------------------------------------------------------------- |
+| **глобальный** | `base({ ignores })`, `createConfig({ ignores })`         | не линтить каталоги целиком (`drizzle/**`, `**/generated/**`) |
+| **scope**      | `ts.recommended({ ignores })`, `typescript: { ignores }` | точечно вырезать файлы **из этого typescript-блока**          |
 
 ### Scope `ignores` — для точечных исключений
 
@@ -235,7 +252,7 @@ Scope `ignores` имеет смысл при `rootDir`, `projectService`, `typeC
 2. `@eslint/js` recommended
 3. пресет `typescript-eslint` из `typescript.preset` и `typescript.projectService`
 4. `eslint-plugin-perfectionist` — `recommended-natural`
-5. стилистические правила TypeScript (`consistent-type-imports`, `consistent-type-exports`, `no-unused-vars`)
+5. `stylistic()` + `stylisticTypeAware()` (если есть `projectService`) в одном typescript scope
 6. `eslint-config-prettier` (последним)
 7. твои переопределения
 

@@ -3,9 +3,9 @@ import type {
   TypeScriptContext,
   TypeScriptContextOptions,
   TypeScriptScopeOptions,
-} from '@/types.js';
+} from '@/types';
 
-import { buildTypeScriptPresetLayer } from './build.js';
+import { buildTypeScriptPresetLayer } from './build';
 
 export function createTypeScriptContext(
   options: TypeScriptContextOptions,

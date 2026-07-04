@@ -1,4 +1,6 @@
 import type { Config } from 'eslint/config';
+import type { ProjectServiceOptions, TypeScriptOptionsInput, TypeScriptPreset } from './internal/create-config-schema.js';
+export type { ProjectServiceOptions, TypeScriptPreset };
 export type BaseOptions = {
     ignores?: string[];
 };
@@ -18,36 +20,21 @@ export type CreateConfigOptions = {
     vue?: boolean | VueOptions;
 };
 export type FlatConfig = Config[];
-export type ProjectServiceOptions = true | {
-    allowDefaultProject?: string[];
-    typeChecked?: boolean;
-};
 export type ReactOptions = {
     preset?: ReactPreset;
 };
 export type ReactPreset = 'jsx-runtime' | 'recommended';
-export type StylisticOptions = {
-    files?: string[];
-};
-export type TypeScriptContext = {
-    recommended(options?: TypeScriptScopeOptions): FlatConfig;
-    strict(options?: TypeScriptScopeOptions): FlatConfig;
-};
+export type RulesConfig = NonNullable<Config['rules']>;
+export type TypeScriptContext = Record<TypeScriptPreset, (options?: TypeScriptScopeOptions) => FlatConfig>;
 export type TypeScriptContextOptions = {
-    rootDir: string;
+    rootDir?: string;
 };
-export type TypeScriptOptions = {
-    files?: string[];
-    ignores?: string[];
-    /** default: `'recommended'` */
-    preset?: TypeScriptPreset;
-    projectService?: ProjectServiceOptions;
-};
-export type TypeScriptPreset = 'recommended' | 'strict';
+export type TypeScriptOptions = TypeScriptOptionsInput;
 export type TypeScriptScopeOptions = {
     files?: string[];
     ignores?: string[];
     projectService?: ProjectServiceOptions;
+    rules?: RulesConfig;
 };
 export type VueOptions = {
     preset?: VuePreset;

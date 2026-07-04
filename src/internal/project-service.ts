@@ -1,8 +1,8 @@
 import type { Config } from 'eslint/config';
 
-import type { ProjectServiceOptions } from '@/types.js';
+import type { ProjectServiceOptions } from '@/types';
 
-import { defaultProject } from '@/internal/constants.js';
+import { defaultProject } from '@/internal/constants';
 
 export type NormalizedProjectService = {
   allowDefaultProject?: string[];

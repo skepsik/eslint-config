@@ -1,1 +1,1 @@
-{"version":3,"file":"prettier.d.ts","sourceRoot":"","sources":["../../src/layers/prettier.ts"],"names":[],"mappings":"AAEA,OAAO,KAAK,EAAE,UAAU,EAAE,MAAM,YAAY,CAAC;AAE7C,wBAAgB,QAAQ,IAAI,UAAU,CAErC"}
+{"version":3,"file":"prettier.d.ts","sourceRoot":"","sources":["../../src/layers/prettier.ts"],"names":[],"mappings":"AAEA,OAAO,KAAK,EAAE,UAAU,EAAE,MAAM,SAAS,CAAC;AAE1C,wBAAgB,QAAQ,IAAI,UAAU,CAErC"}

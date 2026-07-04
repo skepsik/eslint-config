@@ -1,42 +1,31 @@
-import type { Config } from 'eslint/config';
+import type { RulesConfig } from '@/types';
 
-import type { FlatConfig, StylisticOptions } from '@/types.js';
-
-import { tsFiles } from '@/internal/constants.js';
-
-const stylisticRules: Config = {
-  files: tsFiles,
-  rules: {
-    '@typescript-eslint/consistent-type-exports': 'error',
-    '@typescript-eslint/consistent-type-imports': [
-      'error',
-      {
-        disallowTypeAnnotations: true,
-        fixStyle: 'separate-type-imports',
-        prefer: 'type-imports',
-      },
-    ],
-    '@typescript-eslint/no-unused-vars': [
-      'error',
-      {
-        argsIgnorePattern: '^_',
-        varsIgnorePattern: '^_',
-      },
-    ],
-  },
-};
-
-export function stylistic(options: StylisticOptions = {}): FlatConfig {
-  const files = options.files ?? tsFiles;
-
-  if (files === tsFiles) {
-    return [stylisticRules];
-  }
-
-  return [
+const syntaxRules = {
+  '@typescript-eslint/consistent-type-imports': [
+    'error',
     {
-      ...stylisticRules,
-      files,
+      disallowTypeAnnotations: true,
+      fixStyle: 'separate-type-imports',
+      prefer: 'type-imports',
     },
-  ];
+  ],
+  '@typescript-eslint/no-unused-vars': [
+    'error',
+    {
+      argsIgnorePattern: '^_',
+      varsIgnorePattern: '^_',
+    },
+  ],
+} satisfies RulesConfig;
+
+const typeAwareRules = {
+  '@typescript-eslint/consistent-type-exports': 'error',
+} satisfies RulesConfig;
+
+export function stylistic(): RulesConfig {
+  return syntaxRules;
+}
+
+export function stylisticTypeAware(): RulesConfig {
+  return typeAwareRules;
 }

@@ -1,3 +1,4 @@
+import type { ConfigWithExtends } from '@eslint/config-helpers';
 import type { Config } from 'eslint/config';
 
 import tseslint from 'typescript-eslint';
@@ -6,14 +7,18 @@ import type {
   FlatConfig,
   TypeScriptPreset,
   TypeScriptScopeOptions,
-} from '@/types.js';
+} from '@/types';
 
-import { tsFiles } from '@/internal/constants.js';
+import { tsFiles } from '@/internal/constants';
 import {
   buildParserLanguageOptions,
-  type NormalizedProjectService,
   normalizeProjectService,
-} from '@/internal/project-service.js';
+} from '@/internal/project-service';
+
+const typeCheckedPresetName = {
+  recommended: 'recommendedTypeChecked',
+  strict: 'strictTypeChecked',
+} as const satisfies Record<TypeScriptPreset, keyof typeof tseslint.configs>;
 
 export function buildDefaultTypeScriptLayer(): FlatConfig {
   return [...tseslint.configs.recommended];
@@ -24,85 +29,66 @@ export function buildTypeScriptPresetLayer(
   preset: TypeScriptPreset,
   options: TypeScriptScopeOptions = {},
 ): FlatConfig {
-  return buildSyntaxLayer(rootDir, preset, options);
-}
-
-function buildSyntaxLayer(
-  rootDir: string | undefined,
-  preset: TypeScriptPreset,
-  options: TypeScriptScopeOptions,
-): FlatConfig {
-  const files = options.files ?? tsFiles;
   const projectService =
     options.projectService !== undefined
       ? normalizeProjectService(options.projectService)
       : undefined;
 
   if (projectService?.typeChecked) {
-    return buildTypeCheckedLayer(rootDir, preset, projectService, options);
+    return [buildTypeCheckedScopeConfig(rootDir, preset, options)];
   }
 
-  const needsParserOverlay =
-    rootDir !== undefined || projectService !== undefined;
+  const needsScopeOverlay =
+    rootDir !== undefined ||
+    projectService !== undefined ||
+    options.rules !== undefined ||
+    options.ignores !== undefined ||
+    options.files !== undefined;
 
-  if (!needsParserOverlay) {
-    return getSyntaxPreset(preset);
-  }
-
-  return [
-    ...getSyntaxPreset(preset),
-    scopeConfig(
-      {
-        files,
-        languageOptions: buildParserLanguageOptions(rootDir, projectService),
-      },
-      options,
-    ),
-  ];
+  return needsScopeOverlay
+    ? [...tseslint.configs[preset], buildScopeConfig(rootDir, options)]
+    : [...tseslint.configs[preset]];
 }
 
-function buildTypeCheckedLayer(
+function buildScopeConfig(
   rootDir: string | undefined,
-  preset: TypeScriptPreset,
-  projectService: NormalizedProjectService,
-  options: TypeScriptScopeOptions,
-): FlatConfig {
-  const files = options.files ?? tsFiles;
-
-  return [
-    scopeConfig(
-      {
-        extends: getTypeCheckedPresetConfig(preset),
-        files,
-        languageOptions: buildParserLanguageOptions(rootDir, projectService),
-      } as Config,
-      options,
-    ),
-  ];
-}
-
-function getSyntaxPreset(preset: TypeScriptPreset): FlatConfig {
-  return preset === 'strict'
-    ? [...tseslint.configs.strict]
-    : [...tseslint.configs.recommended];
-}
-
-function getTypeCheckedPresetConfig(preset: TypeScriptPreset) {
-  return preset === 'strict'
-    ? tseslint.configs.strictTypeChecked
-    : tseslint.configs.recommendedTypeChecked;
-}
-
-function scopeConfig(
-  config: Config,
   options: TypeScriptScopeOptions,
 ): Config {
-  if (options.ignores === undefined) {
-    return config;
+  const files = options.files ?? tsFiles;
+  const projectService =
+    options.projectService !== undefined
+      ? normalizeProjectService(options.projectService)
+      : undefined;
+
+  const config: Config = {
+    files,
+  };
+
+  if (rootDir !== undefined || projectService !== undefined) {
+    config.languageOptions = buildParserLanguageOptions(
+      rootDir,
+      projectService,
+    );
   }
 
+  if (options.ignores !== undefined) {
+    config.ignores = options.ignores;
+  }
+
+  if (options.rules !== undefined) {
+    config.rules = options.rules;
+  }
+
+  return config;
+}
+
+function buildTypeCheckedScopeConfig(
+  rootDir: string | undefined,
+  preset: TypeScriptPreset,
+  options: TypeScriptScopeOptions,
+): ConfigWithExtends {
   return {
-    ...config,
-    ignores: options.ignores,
+    extends: tseslint.configs[typeCheckedPresetName[preset]],
+    ...buildScopeConfig(rootDir, options),
   };
 }

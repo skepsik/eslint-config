@@ -1,8 +1,8 @@
-export { base } from './base.js';
-export { prettier } from './prettier.js';
-export { stylistic } from './stylistic.js';
+export { base } from './base';
+export { prettier } from './prettier';
+export { stylistic, stylisticTypeAware } from './stylistic';
 export {
   buildDefaultTypeScriptLayer,
   buildTypeScriptPresetLayer,
   createTypeScriptContext,
-} from './typescript/index.js';
+} from './typescript';

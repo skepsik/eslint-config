@@ -1,12 +1,4 @@
-export { createConfig } from '@/create-config.js';
-
-export {
-  assertFrameworksNotImplemented,
-  buildTypeScriptLayers,
-  normalizeTypeScriptOptions,
-} from '@/create-config.js';
-
-export type { NormalizedTypeScriptOptions } from '@/create-config.js';
+export { createConfig } from '@/create-config';
 
 export {
   base,
@@ -14,8 +6,9 @@ export {
   buildTypeScriptPresetLayer,
   prettier,
   stylistic,
-} from '@/layers/index.js';
-export { createTypeScriptContext } from '@/layers/typescript/context.js';
+  stylisticTypeAware,
+} from '@/layers/index';
+export { createTypeScriptContext } from '@/layers/typescript/context';
 
 export type {
   BaseOptions,
@@ -24,7 +17,7 @@ export type {
   ProjectServiceOptions,
   ReactOptions,
   ReactPreset,
-  StylisticOptions,
+  RulesConfig,
   TypeScriptContext,
   TypeScriptContextOptions,
   TypeScriptOptions,
@@ -32,6 +25,6 @@ export type {
   TypeScriptScopeOptions,
   VueOptions,
   VuePreset,
-} from '@/types.js';
+} from '@/types';
 
-export type { Config } from '@/types.js';
+export type { Config } from '@/types';

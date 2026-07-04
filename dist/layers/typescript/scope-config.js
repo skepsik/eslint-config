@@ -5,26 +5,7 @@ const typeCheckedPresetName = {
     recommended: 'recommendedTypeChecked',
     strict: 'strictTypeChecked',
 };
-export function buildDefaultTypeScriptLayer() {
-    return [...tseslint.configs.recommended];
-}
-export function buildTypeScriptPresetLayer(rootDir, preset, options = {}) {
-    const projectService = options.projectService !== undefined
-        ? normalizeProjectService(options.projectService)
-        : undefined;
-    if (projectService?.typeChecked) {
-        return [buildTypeCheckedScopeConfig(rootDir, preset, options)];
-    }
-    const needsScopeOverlay = rootDir !== undefined ||
-        projectService !== undefined ||
-        options.rules !== undefined ||
-        options.ignores !== undefined ||
-        options.files !== undefined;
-    return needsScopeOverlay
-        ? [...tseslint.configs[preset], buildScopeConfig(rootDir, options)]
-        : [...tseslint.configs[preset]];
-}
-function buildScopeConfig(rootDir, options) {
+export function buildScopeConfig(rootDir, options) {
     const files = options.files ?? tsFiles;
     const projectService = options.projectService !== undefined
         ? normalizeProjectService(options.projectService)
@@ -43,7 +24,7 @@ function buildScopeConfig(rootDir, options) {
     }
     return config;
 }
-function buildTypeCheckedScopeConfig(rootDir, preset, options) {
+export function buildTypeCheckedScopeConfig(rootDir, preset, options) {
     return {
         extends: tseslint.configs[typeCheckedPresetName[preset]],
         ...buildScopeConfig(rootDir, options),
