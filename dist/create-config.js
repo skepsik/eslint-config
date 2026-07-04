@@ -17,6 +17,7 @@ export function buildTypeScriptLayers(rootDir, typescript) {
     }
     const scope = {
         ...(typescript.files !== undefined && { files: typescript.files }),
+        ...(typescript.ignores !== undefined && { ignores: typescript.ignores }),
         ...(typescript.projectService !== undefined && {
             projectService: typescript.projectService,
         }),
@@ -60,6 +61,7 @@ export function normalizeTypeScriptOptions(typescript) {
     return {
         preset: typescript.preset ?? 'recommended',
         ...(typescript.files !== undefined && { files: typescript.files }),
+        ...(typescript.ignores !== undefined && { ignores: typescript.ignores }),
         ...(typescript.projectService !== undefined && {
             projectService: typescript.projectService,
         }),

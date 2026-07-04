@@ -20,6 +20,7 @@ import {
 
 export type NormalizedTypeScriptOptions = {
   files?: string[];
+  ignores?: string[];
   preset: TypeScriptPreset;
   projectService?: TypeScriptOptions['projectService'];
 };
@@ -48,6 +49,7 @@ export function buildTypeScriptLayers(
 
   const scope = {
     ...(typescript.files !== undefined && { files: typescript.files }),
+    ...(typescript.ignores !== undefined && { ignores: typescript.ignores }),
     ...(typescript.projectService !== undefined && {
       projectService: typescript.projectService,
     }),
@@ -112,6 +114,7 @@ export function normalizeTypeScriptOptions(
   return {
     preset: typescript.preset ?? 'recommended',
     ...(typescript.files !== undefined && { files: typescript.files }),
+    ...(typescript.ignores !== undefined && { ignores: typescript.ignores }),
     ...(typescript.projectService !== undefined && {
       projectService: typescript.projectService,
     }),

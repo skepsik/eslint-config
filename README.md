@@ -156,7 +156,8 @@ export default createConfig(
 | ---------------- | ---------------------------- | ---------------------------------------------------- |
 | `preset`         | `'recommended' \| 'strict'?` | Пресет tseslint. По умолчанию: `recommended`.        |
 | `projectService` | `ProjectServiceOptions?`     | `projectService` парсера TypeScript.                 |
-| `files`          | `string[]?`                  | Ограничить пресет и настройки парсера этими масками. |
+| `files`          | `string[]?`                  | Ограничить scope этими масками.                      |
+| `ignores`        | `string[]?`                  | Исключения **внутри scope** — см. [Игноры](#игноры). |
 
 `typescript: true` ≡ `{ preset: 'recommended', projectService: true }`.
 
@@ -186,10 +187,47 @@ export default createConfig(
 | `createTypeScriptContext({ rootDir })` | контекст   | привязывает `rootDir` для `recommended()` / `strict()` |
 | `ts.recommended(scope?)`               | `Config[]` | пресет tseslint + опциональные настройки парсера       |
 | `ts.strict(scope?)`                    | `Config[]` | то же с пресетом `strict`                              |
-| `stylistic({ files? })`                | `Config[]` | `consistent-type-imports`, `no-unused-vars`            |
+| `stylistic({ files? })`                | `Config[]` | `consistent-type-imports`, `consistent-type-exports`, `no-unused-vars` |
 | `prettier()`                           | `Config[]` | `eslint-config-prettier` (ставить последним)           |
 
-`TypeScriptScopeOptions`: `{ files?, projectService? }`.
+`TypeScriptScopeOptions`: `{ files?, ignores?, projectService? }`.
+
+## Игноры
+
+Два уровня:
+
+| Уровень | Где | Назначение |
+| ------- | --- | ---------- |
+| **глобальный** | `base({ ignores })`, `createConfig({ ignores })` | не линтить каталоги целиком (`drizzle/**`, `**/generated/**`) |
+| **scope** | `ts.recommended({ ignores })`, `typescript: { ignores }` | точечно вырезать файлы **из этого typescript-блока** |
+
+### Scope `ignores` — для точечных исключений
+
+Когда один scope почти подходит, но пара путей — нет:
+
+```ts
+...ts.recommended({
+  files: ['packages/core/src/**'],
+  ignores: ['packages/core/src/generated/**'],
+  projectService: { typeChecked: true },
+}),
+```
+
+Действует на **конкретный блок** (typeChecked preset или parser overlay), не на весь конфиг. Синтаксический preset из `tseslint.configs.recommended`, разложенный глобально, scope `ignores` **не отключает** — для полного отключения используй глобальный `ignores` или отдельный `eslint.config`.
+
+Scope `ignores` имеет смысл при `rootDir`, `projectService`, `typeChecked` или явных `files` — когда typescript-слой реально эмитит scoped-блок.
+
+### Не для пересечения множеств
+
+**Плохая идея:** один конфиг с `files: ['src/**']` + `ignores`, имитирующими «`src` минус `legacy`» или пересечение нескольких деревьев.
+
+**Лучше:**
+
+- разные `eslint.config.*` по пакетам / приложениям;
+- composable: несколько `ts.recommended({ files })` с разными scope;
+- глобальный `ignores`, если каталог не должен линтиться вообще.
+
+`files` + `ignores` — исключение **из уже заданного scope**, не замена нормальной декомпозиции конфигов.
 
 ## Что входит в конфиг
 

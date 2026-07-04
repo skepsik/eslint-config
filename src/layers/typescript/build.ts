@@ -39,7 +39,7 @@ function buildSyntaxLayer(
       : undefined;
 
   if (projectService?.typeChecked) {
-    return buildTypeCheckedLayer(rootDir, preset, projectService, files);
+    return buildTypeCheckedLayer(rootDir, preset, projectService, options);
   }
 
   const needsParserOverlay =
@@ -51,10 +51,13 @@ function buildSyntaxLayer(
 
   return [
     ...getSyntaxPreset(preset),
-    {
-      files,
-      languageOptions: buildParserLanguageOptions(rootDir, projectService),
-    },
+    scopeConfig(
+      {
+        files,
+        languageOptions: buildParserLanguageOptions(rootDir, projectService),
+      },
+      options,
+    ),
   ];
 }
 
@@ -62,14 +65,19 @@ function buildTypeCheckedLayer(
   rootDir: string | undefined,
   preset: TypeScriptPreset,
   projectService: NormalizedProjectService,
-  files: string[],
+  options: TypeScriptScopeOptions,
 ): FlatConfig {
+  const files = options.files ?? tsFiles;
+
   return [
-    {
-      extends: getTypeCheckedPresetConfig(preset),
-      files,
-      languageOptions: buildParserLanguageOptions(rootDir, projectService),
-    } as Config,
+    scopeConfig(
+      {
+        extends: getTypeCheckedPresetConfig(preset),
+        files,
+        languageOptions: buildParserLanguageOptions(rootDir, projectService),
+      } as Config,
+      options,
+    ),
   ];
 }
 
@@ -83,4 +91,18 @@ function getTypeCheckedPresetConfig(preset: TypeScriptPreset) {
   return preset === 'strict'
     ? tseslint.configs.strictTypeChecked
     : tseslint.configs.recommendedTypeChecked;
+}
+
+function scopeConfig(
+  config: Config,
+  options: TypeScriptScopeOptions,
+): Config {
+  if (options.ignores === undefined) {
+    return config;
+  }
+
+  return {
+    ...config,
+    ignores: options.ignores,
+  };
 }

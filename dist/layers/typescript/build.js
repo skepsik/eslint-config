@@ -13,7 +13,7 @@ function buildSyntaxLayer(rootDir, preset, options) {
         ? normalizeProjectService(options.projectService)
         : undefined;
     if (projectService?.typeChecked) {
-        return buildTypeCheckedLayer(rootDir, preset, projectService, files);
+        return buildTypeCheckedLayer(rootDir, preset, projectService, options);
     }
     const needsParserOverlay = rootDir !== undefined || projectService !== undefined;
     if (!needsParserOverlay) {
@@ -21,19 +21,29 @@ function buildSyntaxLayer(rootDir, preset, options) {
     }
     return [
         ...getSyntaxPreset(preset),
-        {
+        scopeConfig({
             files,
             languageOptions: buildParserLanguageOptions(rootDir, projectService),
-        },
+        }, options),
     ];
 }
-function buildTypeCheckedLayer(rootDir, preset, projectService, files) {
+function scopeConfig(config, options) {
+    if (options.ignores === undefined) {
+        return config;
+    }
+    return {
+        ...config,
+        ignores: options.ignores,
+    };
+}
+function buildTypeCheckedLayer(rootDir, preset, projectService, options) {
+    const files = options.files ?? tsFiles;
     return [
-        {
+        scopeConfig({
             extends: getTypeCheckedPresetConfig(preset),
             files,
             languageOptions: buildParserLanguageOptions(rootDir, projectService),
-        },
+        }, options),
     ];
 }
 function getSyntaxPreset(preset) {

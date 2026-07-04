@@ -38,6 +38,7 @@ export type TypeScriptContextOptions = {
 };
 export type TypeScriptOptions = {
     files?: string[];
+    ignores?: string[];
     /** default: `'recommended'` */
     preset?: TypeScriptPreset;
     projectService?: ProjectServiceOptions;
@@ -45,6 +46,7 @@ export type TypeScriptOptions = {
 export type TypeScriptPreset = 'recommended' | 'strict';
 export type TypeScriptScopeOptions = {
     files?: string[];
+    ignores?: string[];
     projectService?: ProjectServiceOptions;
 };
 export type VueOptions = {

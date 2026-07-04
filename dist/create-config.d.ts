@@ -2,6 +2,7 @@ import type { Config } from 'eslint/config';
 import type { CreateConfigOptions, FlatConfig, TypeScriptOptions, TypeScriptPreset } from './types.js';
 export type NormalizedTypeScriptOptions = {
     files?: string[];
+    ignores?: string[];
     preset: TypeScriptPreset;
     projectService?: TypeScriptOptions['projectService'];
 };
