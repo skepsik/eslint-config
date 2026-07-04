@@ -1,34 +1,8 @@
-import { type Config } from 'eslint/config';
-export type ProjectServiceOptions = true | {
-    typeChecked?: boolean;
-    allowDefaultProject?: string[];
-};
-export type TypeScriptLevel = 'recommended' | 'strict';
-export type TypeScriptOptions = {
-    level?: TypeScriptLevel;
-    projectService?: ProjectServiceOptions;
-};
-export type VueLevel = 'essential' | 'strongly-recommended' | 'recommended';
-export type VueOptions = {
-    level?: VueLevel;
-};
-export type ReactLevel = 'recommended' | 'jsx-runtime';
-export type ReactOptions = {
-    level?: ReactLevel;
-};
-export type CreateConfigOptions = {
-    /**
-     * Directory of this eslint.config.ts (`import.meta.dirname`).
-     * Required in monorepos with nested eslint.config.* files.
-     */
-    rootDir?: string;
-    ignores?: string[];
-    /** `true` ≡ `{ level: 'recommended', projectService: true }` */
-    typescript?: boolean | TypeScriptOptions;
-    /** eslint-plugin-vue — not implemented yet */
-    vue?: boolean | VueOptions;
-    /** eslint-plugin-react — not implemented yet */
-    react?: boolean | ReactOptions;
-};
-export declare function createConfig(options?: CreateConfigOptions, ...overrides: Config[]): Config[];
+export { createConfig } from './create-config.js';
+export { assertFrameworksNotImplemented, buildTypeScriptLayers, normalizeTypeScriptOptions, } from './create-config.js';
+export type { NormalizedTypeScriptOptions } from './create-config.js';
+export { base, buildDefaultTypeScriptLayer, buildTypeScriptPresetLayer, prettier, stylistic, } from './layers/index.js';
+export { createTypeScriptContext } from './layers/typescript/context.js';
+export type { BaseOptions, CreateConfigOptions, FlatConfig, ProjectServiceOptions, ReactOptions, ReactPreset, StylisticOptions, TypeScriptContext, TypeScriptContextOptions, TypeScriptOptions, TypeScriptPreset, TypeScriptScopeOptions, VueOptions, VuePreset, } from './types.js';
+export type { Config } from './types.js';
 //# sourceMappingURL=index.d.ts.map
