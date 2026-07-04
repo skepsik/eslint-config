@@ -33,19 +33,110 @@ const stylisticRules: Config = {
   },
 };
 
+export type TypedOptions = {
+  allowDefaultProject?: string[];
+};
+
 export type CreateConfigOptions = {
-  typed?: {
-    tsconfigRootDir: string;
-    /**
-     * Globs for TS files outside tsconfig that use defaultProject.
-     * Must not match files already included in any tsconfig (e.g. vite.config.ts).
-     */
-    allowDefaultProject?: string[];
-  };
+  /**
+   * Directory of this eslint.config.ts (`import.meta.dirname`).
+   * Required in monorepos with nested eslint.config.* files.
+   */
+  rootDir?: string;
+  typed?: boolean | TypedOptions;
   /** eslint-plugin-vue — not implemented yet */
   vue?: boolean;
   ignores?: string[];
 };
+
+type ParserOptions = {
+  projectService?: {
+    allowDefaultProject?: string[];
+    defaultProject: string;
+  };
+  tsconfigRootDir?: string;
+};
+
+function normalizeTypedOptions(
+  typed: CreateConfigOptions['typed'],
+): TypedOptions | undefined {
+  if (!typed) {
+    return undefined;
+  }
+
+  if (typed === true) {
+    return {};
+  }
+
+  return typed;
+}
+
+function buildProjectService(typed: TypedOptions) {
+  const projectService: NonNullable<ParserOptions['projectService']> = {
+    defaultProject,
+  };
+
+  if (typed.allowDefaultProject !== undefined) {
+    projectService.allowDefaultProject = typed.allowDefaultProject;
+  }
+
+  return projectService;
+}
+
+function buildParserLanguageOptions(
+  rootDir?: string,
+  typed?: TypedOptions,
+): NonNullable<Config['languageOptions']> {
+  const parserOptions: ParserOptions = {};
+
+  if (rootDir !== undefined) {
+    parserOptions.tsconfigRootDir = rootDir;
+  }
+
+  if (typed !== undefined) {
+    parserOptions.projectService = buildProjectService(typed);
+  }
+
+  return { parserOptions };
+}
+
+function buildTypedTypeScriptConfigs(
+  rootDir: string | undefined,
+  typed: TypedOptions,
+) {
+  return [
+    {
+      extends: tseslint.configs.recommendedTypeChecked,
+      files: tsFiles,
+      languageOptions: buildParserLanguageOptions(rootDir, typed),
+    },
+  ];
+}
+
+function buildSyntaxTypeScriptConfigs(rootDir: string | undefined) {
+  if (rootDir === undefined) {
+    return [...tseslint.configs.recommended];
+  }
+
+  return [
+    ...tseslint.configs.recommended,
+    {
+      files: tsFiles,
+      languageOptions: buildParserLanguageOptions(rootDir),
+    },
+  ];
+}
+
+function buildTypeScriptConfigs(
+  rootDir: string | undefined,
+  typed: TypedOptions | undefined,
+) {
+  if (typed !== undefined) {
+    return buildTypedTypeScriptConfigs(rootDir, typed);
+  }
+
+  return buildSyntaxTypeScriptConfigs(rootDir);
+}
 
 export function createConfig(
   options: CreateConfigOptions = {},
@@ -57,38 +148,15 @@ export function createConfig(
     );
   }
 
-  const { typed, ignores = [] } = options;
-
-  const typedLanguageOptions = typed
-    ? {
-        languageOptions: {
-          parserOptions: {
-            projectService: {
-              ...(typed.allowDefaultProject && {
-                allowDefaultProject: typed.allowDefaultProject,
-              }),
-              defaultProject,
-            },
-            tsconfigRootDir: typed.tsconfigRootDir,
-          },
-        },
-      }
-    : {};
+  const typedOptions = normalizeTypedOptions(options.typed);
+  const ignores = options.ignores ?? [];
 
   return defineConfig([
     {
       ignores: ['**/dist/**', ...ignores],
     },
     eslint.configs.recommended,
-    ...(typed
-      ? [
-          {
-            files: tsFiles,
-            extends: tseslint.configs.recommendedTypeChecked,
-            ...typedLanguageOptions,
-          },
-        ]
-      : tseslint.configs.recommended),
+    ...buildTypeScriptConfigs(options.rootDir, typedOptions),
     perfectionist.configs['recommended-natural'],
     stylisticRules,
     ...overrides,

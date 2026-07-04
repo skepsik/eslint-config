@@ -26,40 +26,73 @@ const stylisticRules = {
         ],
     },
 };
+function normalizeTypedOptions(typed) {
+    if (!typed) {
+        return undefined;
+    }
+    if (typed === true) {
+        return {};
+    }
+    return typed;
+}
+function buildProjectService(typed) {
+    const projectService = {
+        defaultProject,
+    };
+    if (typed.allowDefaultProject !== undefined) {
+        projectService.allowDefaultProject = typed.allowDefaultProject;
+    }
+    return projectService;
+}
+function buildParserLanguageOptions(options) {
+    const { rootDir, typed } = options;
+    if (!rootDir && !typed) {
+        return undefined;
+    }
+    const parserOptions = {};
+    if (rootDir) {
+        parserOptions.tsconfigRootDir = rootDir;
+    }
+    if (typed) {
+        parserOptions.projectService = buildProjectService(typed);
+    }
+    return { parserOptions };
+}
 export function createConfig(options = {}, ...overrides) {
     if (options.vue) {
         throw new Error('createConfig({ vue: true }) is not implemented yet');
     }
-    const { typed, ignores = [] } = options;
-    const typedLanguageOptions = typed
-        ? {
-            languageOptions: {
-                parserOptions: {
-                    projectService: {
-                        ...(typed.allowDefaultProject && {
-                            allowDefaultProject: typed.allowDefaultProject,
-                        }),
-                        defaultProject,
-                    },
-                    tsconfigRootDir: typed.tsconfigRootDir,
-                },
+    const typedOptions = normalizeTypedOptions(options.typed);
+    const ignores = options.ignores ?? [];
+    const parserLanguageOptions = buildParserLanguageOptions({
+        rootDir: options.rootDir,
+        typed: typedOptions,
+    });
+    const typescriptConfigs = typedOptions
+        ? [
+            {
+                extends: tseslint.configs.recommendedTypeChecked,
+                files: tsFiles,
+                ...(parserLanguageOptions && {
+                    languageOptions: parserLanguageOptions,
+                }),
             },
-        }
-        : {};
+        ]
+        : parserLanguageOptions
+            ? [
+                ...tseslint.configs.recommended,
+                {
+                    files: tsFiles,
+                    languageOptions: parserLanguageOptions,
+                },
+            ]
+            : tseslint.configs.recommended;
     return defineConfig([
         {
             ignores: ['**/dist/**', ...ignores],
         },
         eslint.configs.recommended,
-        ...(typed
-            ? [
-                {
-                    files: tsFiles,
-                    extends: tseslint.configs.recommendedTypeChecked,
-                    ...typedLanguageOptions,
-                },
-            ]
-            : tseslint.configs.recommended),
+        ...typescriptConfigs,
         perfectionist.configs['recommended-natural'],
         stylisticRules,
         ...overrides,

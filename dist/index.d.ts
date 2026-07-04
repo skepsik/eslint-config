@@ -1,13 +1,14 @@
 import { type Config } from 'eslint/config';
+export type TypedOptions = {
+    allowDefaultProject?: string[];
+};
 export type CreateConfigOptions = {
-    typed?: {
-        tsconfigRootDir: string;
-        /**
-         * Globs for TS files outside tsconfig that use defaultProject.
-         * Must not match files already included in any tsconfig (e.g. vite.config.ts).
-         */
-        allowDefaultProject?: string[];
-    };
+    /**
+     * Directory of this eslint.config.ts (`import.meta.dirname`).
+     * Required in monorepos with nested eslint.config.* files.
+     */
+    rootDir?: string;
+    typed?: boolean | TypedOptions;
     /** eslint-plugin-vue — not implemented yet */
     vue?: boolean;
     ignores?: string[];
